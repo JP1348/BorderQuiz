@@ -41,6 +41,13 @@
     animation: flash 0.9s steps(1) infinite;
   }
   #beginBtn:hover { text-shadow: 0 0 24px #22c55e88; }
+  #splashBtns { display: none; flex-direction: column; align-items: center; gap: 1rem; }
+  #leaderboardBtn {
+    font-family: 'Courier New', monospace; font-size: 0.85rem;
+    color: #aaa; background: none; border: 1px solid #ddd;
+    padding: 0.4rem 1.2rem; cursor: pointer; letter-spacing: 0.12em;
+  }
+  #leaderboardBtn:hover { color: #111; border-color: #aaa; }
 
   /* RESULTS PROMPT */
   #resultsPrompt { align-items: center; justify-content: center; flex-direction: column; background: #fff; }
@@ -97,6 +104,36 @@
   #scoreDisplay { font-size: 3.8rem; font-weight: bold; color: #22c55e; margin: 0.3rem 0; }
   #scoreGrade { font-size: 1.1rem; color: #555; margin-bottom: 0.2rem; }
   #scoreLabel { font-size: 0.82rem; color: #aaa; }
+  /* SAVE TO LEADERBOARD */
+  #lbSaveRow { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.9rem; }
+  #lbNameInput {
+    font-family: 'Courier New', monospace; font-size: 0.85rem;
+    border: 2px solid #ccc; padding: 0.4rem 0.7rem;
+    letter-spacing: 0.04em; outline: none; width: 180px;
+  }
+  #lbNameInput:focus { border-color: #22c55e; }
+  #lbSaveBtn {
+    font-family: 'Courier New', monospace; font-size: 0.85rem; font-weight: bold;
+    color: #fff; background: #22c55e; border: none; padding: 0.4rem 1rem;
+    cursor: pointer; letter-spacing: 0.06em; white-space: nowrap;
+  }
+  #lbSaveBtn:hover { background: #16a34a; }
+  #lbSaveBtn:disabled { background: #aaa; cursor: default; }
+  #lbSaveFeedback { font-size: 0.75rem; letter-spacing: 0.04em; margin-top: 0.25rem; min-height: 1em; }
+  /* LEADERBOARD SCREEN */
+  #leaderboard { flex-direction: column; align-items: center; background: #fff; overflow-y: auto; padding: 2.5rem 1.5rem; gap: 1.2rem; }
+  #leaderboard h2 { font-size: 1.7rem; letter-spacing: 0.16em; color: #111; }
+  #lbTable { width: 100%; max-width: 560px; border-collapse: collapse; font-size: 0.88rem; }
+  #lbTable th { border-bottom: 2px solid #111; padding: 0.4rem 0.7rem; text-align: left; letter-spacing: 0.08em; color: #111; }
+  #lbTable td { padding: 0.45rem 0.7rem; border-bottom: 1px solid #eee; color: #333; }
+  #lbTable tbody tr:first-child td { font-weight: bold; color: #22c55e; }
+  #lbEmpty { font-size: 0.9rem; color: #aaa; }
+  #lbBackBtn {
+    font-family: 'Courier New', monospace; font-size: 0.9rem; font-weight: bold;
+    color: #fff; background: #111; border: none; padding: 0.6rem 2rem;
+    cursor: pointer; letter-spacing: 0.1em; margin-top: 0.5rem;
+  }
+  #lbBackBtn:hover { background: #333; }
   #resultMapWrap { flex-shrink: 0; }
   #playAgainBtn {
     margin: 1.5rem; font-family: 'Courier New', monospace;
@@ -112,26 +149,6 @@
     display: none; white-space: nowrap; letter-spacing: 0.05em;
   }
 
-  /* SAVE SCORE ROW */
-  #saveScoreRow {
-    display: flex; gap: 0.5rem; align-items: center; margin: 0.6rem 0 0.2rem;
-  }
-  #saveNameInput {
-    font-family: 'Courier New', monospace; font-size: 0.85rem;
-    border: 2px solid #ccc; padding: 0.4rem 0.7rem;
-    letter-spacing: 0.04em; outline: none; width: 200px;
-  }
-  #saveNameInput:focus { border-color: #22c55e; }
-  #saveScoreBtn {
-    font-family: 'Courier New', monospace; font-size: 0.85rem; font-weight: bold;
-    color: #fff; background: #22c55e; border: none; padding: 0.4rem 1rem;
-    cursor: pointer; letter-spacing: 0.06em; white-space: nowrap;
-  }
-  #saveScoreBtn:hover { background: #16a34a; }
-  #saveScoreBtn:disabled { background: #aaa; cursor: default; }
-  #saveScoreLabel { font-size: 0.78rem; color: #999; letter-spacing: 0.04em; margin-top: 0.6rem; }
-  #saveFeedback { font-size: 0.78rem; color: #22c55e; letter-spacing: 0.04em; margin-top: 0.2rem; min-height: 1.1em; }
-
   @keyframes flash { 0%,49%{opacity:1} 50%,100%{opacity:0} }
 </style>
 </head>
@@ -144,8 +161,11 @@
 
 <div id="splash" class="screen active">
   <h1>Border<span>Quiz</span></h1>
-  <div id="loadingMsg">Loading map data�</div>
-  <button id="beginBtn" onclick="startGame()">BEGIN</button>
+  <div id="loadingMsg">Loading map data…</div>
+  <div id="splashBtns">
+    <button id="beginBtn" onclick="startGame()">BEGIN</button>
+    <button id="leaderboardBtn" onclick="showLeaderboard()">LEADERBOARD</button>
+  </div>
 </div>
 
 <div id="game" class="screen">
@@ -172,20 +192,29 @@
 <div id="results" class="screen">
   <div id="resultsHeader">
     <h2>YOUR RESULTS</h2>
-    <div id="scoreDisplay">�</div>
-    <div id="scoreGrade">�</div>
+    <div id="scoreDisplay">?</div>
+    <div id="scoreGrade">?</div>
     <div id="scoreLabel">average placement accuracy</div>
-    <div id="saveScoreLabel">Want to add your name to the leaderboard?</div>
-    <div id="saveScoreRow">
-      <input type="text" id="saveNameInput" placeholder="Your name" maxlength="30" autocomplete="off"
-        onkeydown="if(event.key==='Enter')saveScore()" />
-      <button id="saveScoreBtn" onclick="saveScore()">ADD TO LEADERBOARD</button>
+    <div id="lbSaveRow">
+      <input type="text" id="lbNameInput" placeholder="Your name" maxlength="30" autocomplete="off"
+        onkeydown="if(event.key==='Enter')saveToLeaderboard()" />
+      <button id="lbSaveBtn" onclick="saveToLeaderboard()">ADD TO LEADERBOARD</button>
     </div>
-    <div id="saveFeedback"></div>
+    <div id="lbSaveFeedback"></div>
   </div>
   <div id="resultMapWrap"></div>
   <div id="hover-tooltip"></div>
   <button id="playAgainBtn" onclick="resetGame()">PLAY AGAIN</button>
+</div>
+
+<div id="leaderboard" class="screen">
+  <h2>LEADERBOARD</h2>
+  <table id="lbTable">
+    <thead><tr><th>#</th><th>Name</th><th>Score</th><th>Grade</th><th>Date</th></tr></thead>
+    <tbody id="lbBody"></tbody>
+  </table>
+  <div id="lbEmpty" style="display:none">No scores yet — be the first!</div>
+  <button id="lbBackBtn" onclick="showScreen('splash')">BACK</button>
 </div>
 
 <div id="dragGhost">
@@ -212,13 +241,63 @@ function supaPost(table, data) {
     body: JSON.stringify(data)
   }).catch(() => {});
 }
-let _lastScore = 0, _lastGrade = '';
-function saveScore() {
-  const name = document.getElementById('saveNameInput').value.trim();
-  if (!name) { document.getElementById('saveNameInput').focus(); return; }
-  supaPost('borderquiz_scores', { player_name: name, score: _lastScore, grade: _lastGrade });
-  document.getElementById('saveScoreBtn').disabled = true;
-  document.getElementById('saveFeedback').textContent = 'Score saved!';
+
+const BAD_WORDS = [
+  'fuck','shit','ass','bitch','cunt','dick','cock','pussy','nigger','nigga',
+  'faggot','fag','retard','whore','slut','bastard'
+];
+function containsBadWord(str) {
+  const lower = str.toLowerCase().replace(/[^a-z]/g,'');
+  return BAD_WORDS.some(w => lower.includes(w));
+}
+
+let _pendingScore = 0, _pendingGrade = '';
+
+function saveToLeaderboard() {
+  const name = document.getElementById('lbNameInput').value.trim();
+  if (!name) { document.getElementById('lbNameInput').focus(); return; }
+  if (containsBadWord(name)) {
+    const fb = document.getElementById('lbSaveFeedback');
+    fb.style.color = '#e63946';
+    fb.textContent = 'Please use an appropriate name.';
+    return;
+  }
+  supaPost('borderquiz_scores', { player_name: name, score: _pendingScore, grade: _pendingGrade });
+  document.getElementById('lbSaveBtn').disabled = true;
+  const fb = document.getElementById('lbSaveFeedback');
+  fb.style.color = '#22c55e';
+  fb.textContent = 'Added to leaderboard!';
+}
+
+async function showLeaderboard() {
+  showScreen('leaderboard');
+  const tbody = document.getElementById('lbBody');
+  tbody.innerHTML = '<tr><td colspan="5" style="color:#aaa;padding:1rem">Loading…</td></tr>';
+  try {
+    const res = await fetch(
+      `${SUPA_URL}/rest/v1/borderquiz_scores?player_name=not.is.null&order=score.desc&limit=20`,
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } }
+    );
+    const rows = await res.json();
+    tbody.innerHTML = '';
+    if (!rows.length) {
+      document.getElementById('lbEmpty').style.display = 'block';
+      return;
+    }
+    document.getElementById('lbEmpty').style.display = 'none';
+    rows.forEach((r, i) => {
+      const date = new Date(r.played_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i+1}</td><td>${escHtml(r.player_name)}</td><td>${r.score}%</td><td>${r.grade}</td><td>${date}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:#e63946">Could not load scores.</td></tr>';
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 const FIPS = {
@@ -281,7 +360,8 @@ const pathGen    = d3.geoPath().projection(projection);
     stateIds = Object.keys(stateData);
 
     document.getElementById('loadingMsg').style.display = 'none';
-    document.getElementById('beginBtn').style.display   = 'inline-block';
+    document.getElementById('splashBtns').style.display  = 'flex';
+    document.getElementById('beginBtn').style.display    = 'block';
   } catch(err) {
     document.getElementById('loadingMsg').textContent = 'Failed to load map data. Check your internet connection.';
     console.error(err);
@@ -431,9 +511,9 @@ function cancelPlacement() {
 }
 
 function showResults() {
-  document.getElementById('saveNameInput').value = '';
-  document.getElementById('saveScoreBtn').disabled = false;
-  document.getElementById('saveFeedback').textContent = '';
+  document.getElementById('lbNameInput').value = '';
+  document.getElementById('lbSaveBtn').disabled = false;
+  document.getElementById('lbSaveFeedback').textContent = '';
   buildResultMap(); calcScore(); showScreen('results'); animatePlacements();
 }
 
@@ -524,9 +604,10 @@ function calcScore() {
   });
   const score=count?Math.round(total/count):0;
   const grade=score>=93?'A+':score>=90?'A':score>=87?'A-':score>=83?'B+':score>=80?'B':score>=77?'B-':score>=73?'C+':score>=70?'C':score>=67?'C-':score>=60?'D':'F';
-  _lastScore=score; _lastGrade=grade;
   document.getElementById('scoreDisplay').textContent=score+'%';
   document.getElementById('scoreGrade').textContent='Grade: '+grade;
+  _pendingScore=score; _pendingGrade=grade;
+  supaPost('borderquiz_scores', { player_name: null, score, grade });
 }
 
 function animatePlacements() {
