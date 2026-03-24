@@ -112,30 +112,24 @@
     display: none; white-space: nowrap; letter-spacing: 0.05em;
   }
 
-  /* NAME MODAL */
-  #nameModal {
-    display: none; position: fixed; inset: 0; z-index: 10000;
-    background: rgba(0,0,0,0.52); align-items: center; justify-content: center;
+  /* SAVE SCORE ROW */
+  #saveScoreRow {
+    display: flex; gap: 0.5rem; align-items: center; margin: 0.6rem 0 0.2rem;
   }
-  #nameModal.open { display: flex; }
-  #nameModalBox {
-    background: #fff; border: 2px solid #111; padding: 2.2rem 2.5rem;
-    text-align: center; display: flex; flex-direction: column; gap: 1.2rem;
-    min-width: 320px;
+  #saveNameInput {
+    font-family: 'Courier New', monospace; font-size: 0.85rem;
+    border: 2px solid #ccc; padding: 0.4rem 0.7rem;
+    letter-spacing: 0.04em; outline: none; width: 200px;
   }
-  #nameModalBox p { font-size: 1rem; color: #111; line-height: 1.6; letter-spacing: 0.03em; }
-  #playerNameInput {
-    font-family: 'Courier New', monospace; font-size: 1rem;
-    border: 2px solid #111; padding: 0.5rem 0.8rem;
-    text-align: center; letter-spacing: 0.05em; outline: none; width: 100%;
+  #saveNameInput:focus { border-color: #22c55e; }
+  #saveScoreBtn {
+    font-family: 'Courier New', monospace; font-size: 0.85rem; font-weight: bold;
+    color: #fff; background: #22c55e; border: none; padding: 0.4rem 1rem;
+    cursor: pointer; letter-spacing: 0.06em; white-space: nowrap;
   }
-  #playerNameInput:focus { border-color: #22c55e; }
-  #nameSubmitBtn {
-    font-family: 'Courier New', monospace; font-size: 1rem; font-weight: bold;
-    color: #fff; background: #22c55e; border: none; padding: 0.7rem 1.5rem;
-    cursor: pointer; letter-spacing: 0.1em;
-  }
-  #nameSubmitBtn:hover { background: #16a34a; }
+  #saveScoreBtn:hover { background: #16a34a; }
+  #saveScoreBtn:disabled { background: #aaa; cursor: default; }
+  #saveFeedback { font-size: 0.78rem; color: #22c55e; letter-spacing: 0.04em; margin-top: 0.2rem; min-height: 1.1em; }
 
   @keyframes flash { 0%,49%{opacity:1} 50%,100%{opacity:0} }
 </style>
@@ -171,7 +165,7 @@
 
 <div id="resultsPrompt" class="screen">
   <p>All 48 states placed!</p>
-  <button id="checkScoreBtn" onclick="promptName()">CHECK YOUR SCORE</button>
+  <button id="checkScoreBtn" onclick="showResults()">CHECK YOUR SCORE</button>
 </div>
 
 <div id="results" class="screen">
@@ -180,19 +174,16 @@
     <div id="scoreDisplay">�</div>
     <div id="scoreGrade">�</div>
     <div id="scoreLabel">average placement accuracy</div>
+    <div id="saveScoreRow">
+      <input type="text" id="saveNameInput" placeholder="Your name" maxlength="30" autocomplete="off"
+        onkeydown="if(event.key==='Enter')saveScore()" />
+      <button id="saveScoreBtn" onclick="saveScore()">SAVE SCORE</button>
+    </div>
+    <div id="saveFeedback"></div>
   </div>
   <div id="resultMapWrap"></div>
   <div id="hover-tooltip"></div>
   <button id="playAgainBtn" onclick="resetGame()">PLAY AGAIN</button>
-</div>
-
-<div id="nameModal">
-  <div id="nameModalBox">
-    <p>All 48 states placed!<br/>Enter your name to save your score.</p>
-    <input type="text" id="playerNameInput" placeholder="Your name (optional)" maxlength="30" autocomplete="off"
-      onkeydown="if(event.key==='Enter')submitName()" />
-    <button id="nameSubmitBtn" onclick="submitName()">SEE MY SCORE →</button>
-  </div>
 </div>
 
 <div id="dragGhost">
@@ -219,15 +210,13 @@ function supaPost(table, data) {
     body: JSON.stringify(data)
   }).catch(() => {});
 }
-function promptName() {
-  document.getElementById('playerNameInput').value = '';
-  document.getElementById('nameModal').classList.add('open');
-  setTimeout(() => document.getElementById('playerNameInput').focus(), 50);
-}
-function submitName() {
-  const name = document.getElementById('playerNameInput').value.trim();
-  document.getElementById('nameModal').classList.remove('open');
-  showResults(name);
+let _lastScore = 0, _lastGrade = '';
+function saveScore() {
+  const name = document.getElementById('saveNameInput').value.trim();
+  if (!name) { document.getElementById('saveNameInput').focus(); return; }
+  supaPost('borderquiz_scores', { player_name: name, score: _lastScore, grade: _lastGrade });
+  document.getElementById('saveScoreBtn').disabled = true;
+  document.getElementById('saveFeedback').textContent = 'Score saved!';
 }
 
 const FIPS = {
@@ -439,7 +428,12 @@ function cancelPlacement() {
   document.getElementById('hint').textContent = 'Drag the shape onto the map, then click PLACE.';
 }
 
-function showResults(playerName) { buildResultMap(); calcScore(playerName); showScreen('results'); animatePlacements(); }
+function showResults() {
+  document.getElementById('saveNameInput').value = '';
+  document.getElementById('saveScoreBtn').disabled = false;
+  document.getElementById('saveFeedback').textContent = '';
+  buildResultMap(); calcScore(); showScreen('results'); animatePlacements();
+}
 
 function buildResultMap() {
   const wrap = document.getElementById('resultMapWrap');
@@ -518,7 +512,7 @@ function hideCorrectOutline() {
   document.getElementById('hover-tooltip').style.display = 'none';
 }
 
-function calcScore(playerName) {
+function calcScore() {
   let total=0,count=0;
   stateIds.forEach(id => {
     const p=placements[id]; if(!p) return;
@@ -528,9 +522,9 @@ function calcScore(playerName) {
   });
   const score=count?Math.round(total/count):0;
   const grade=score>=93?'A+':score>=90?'A':score>=87?'A-':score>=83?'B+':score>=80?'B':score>=77?'B-':score>=73?'C+':score>=70?'C':score>=67?'C-':score>=60?'D':'F';
+  _lastScore=score; _lastGrade=grade;
   document.getElementById('scoreDisplay').textContent=score+'%';
   document.getElementById('scoreGrade').textContent='Grade: '+grade;
-  supaPost('borderquiz_scores', { player_name: playerName || null, score, grade });
 }
 
 function animatePlacements() {
