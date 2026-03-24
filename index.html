@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BorderQuiz � USA</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #fff;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh; width: 100vw;
+  }
+  .screen { display: none; position: absolute; inset: 0; }
+  .screen.active { display: flex; }
+
+  /* MOBILE BLOCK */
+  #mobileBlock {
+    display: none; position: fixed; inset: 0; z-index: 99999;
+    background: #fff; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 2rem;
+  }
+  #mobileBlock h2 { font-size: 1.6rem; color: #111; letter-spacing: 0.1em; margin-bottom: 1rem; }
+  #mobileBlock h2 span { color: #22c55e; }
+  #mobileBlock p { font-size: 0.95rem; color: #666; line-height: 1.7; max-width: 320px; }
+
+  /* SPLASH */
+  #splash { align-items: center; justify-content: center; flex-direction: column; background: #fff; }
+  #splash h1 { font-size: 3rem; letter-spacing: 0.18em; color: #111; margin-bottom: 2rem; }
+  #splash h1 span { color: #22c55e; }
+  #loadingMsg { font-size: 0.95rem; color: #aaa; letter-spacing: 0.08em; }
+  #beginBtn {
+    display: none;
+    font-family: 'Courier New', monospace;
+    font-size: 2.5rem; font-weight: bold;
+    color: #22c55e; background: none; border: none;
+    cursor: pointer; letter-spacing: 0.22em;
+    animation: flash 0.9s steps(1) infinite;
+  }
+  #beginBtn:hover { text-shadow: 0 0 24px #22c55e88; }
+
+  /* RESULTS PROMPT */
+  #resultsPrompt { align-items: center; justify-content: center; flex-direction: column; background: #fff; }
+  #resultsPrompt p { font-size: 1.1rem; color: #666; margin-bottom: 2rem; letter-spacing: 0.05em; }
+  #checkScoreBtn {
+    font-family: 'Courier New', monospace;
+    font-size: 2.2rem; font-weight: bold;
+    color: #22c55e; background: none; border: none;
+    cursor: pointer; letter-spacing: 0.14em;
+    animation: flash 0.9s steps(1) infinite;
+  }
+
+  /* GAME */
+  #game { flex-direction: row; background: #fff; }
+  #mapArea { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  #mapSvg { display: block; cursor: crosshair; }
+  .nat-border { fill: none; stroke: #111; stroke-width: 1.6; stroke-linejoin: round; }
+
+  #sidebar {
+    width: 380px; min-width: 360px; border-left: 2px solid #111;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 1.2rem; gap: 0.85rem; background: #fff;
+  }
+  #stateCounter { font-size: 0.82rem; color: #999; letter-spacing: 0.05em; }
+  #stateName { font-size: 0.98rem; font-weight: bold; text-align: center; min-height: 2.6em; line-height: 1.35; }
+  #stateBox {
+    width: 354px; height: 222px; border: 2px solid #111;
+    display: flex; align-items: center; justify-content: center;
+    background: #fff; cursor: grab; user-select: none; overflow: hidden;
+  }
+  #stateBox:active { cursor: grabbing; }
+  #stateBoxSvg { display: block; overflow: hidden; pointer-events: none; }
+  #btnRow {
+    display: none; width: 100%; gap: 0.4rem; flex-direction: row;
+  }
+  #placeBtn, #cancelBtn {
+    flex: 1;
+    font-family: 'Courier New', monospace; font-size: 0.88rem;
+    border: none; padding: 0.5rem 0.6rem; cursor: pointer; letter-spacing: 0.06em;
+  }
+  #placeBtn  { color: #fff; background: #22c55e; }
+  #placeBtn:hover  { background: #16a34a; }
+  #cancelBtn { color: #fff; background: #888; }
+  #cancelBtn:hover { background: #555; }
+  #hint { font-size: 0.7rem; color: #bbb; text-align: center; line-height: 1.5; }
+
+  /* DRAG GHOST */
+  #dragGhost { position: fixed; pointer-events: none; z-index: 9999; display: none; opacity: 0.85; }
+
+  /* RESULTS */
+  #results { flex-direction: column; align-items: center; justify-content: flex-start; background: #fff; overflow-y: auto; }
+  #resultsHeader { padding: 1.4rem; text-align: center; }
+  #resultsHeader h2 { font-size: 1.7rem; letter-spacing: 0.12em; color: #111; }
+  #scoreDisplay { font-size: 3.8rem; font-weight: bold; color: #22c55e; margin: 0.3rem 0; }
+  #scoreGrade { font-size: 1.1rem; color: #555; margin-bottom: 0.2rem; }
+  #scoreLabel { font-size: 0.82rem; color: #aaa; }
+  #resultMapWrap { flex-shrink: 0; }
+  #playAgainBtn {
+    margin: 1.5rem; font-family: 'Courier New', monospace;
+    font-size: 1rem; font-weight: bold; color: #fff; background: #22c55e;
+    border: none; padding: 0.65rem 2rem; cursor: pointer; letter-spacing: 0.1em;
+  }
+  #playAgainBtn:hover { background: #16a34a; }
+
+  #hover-tooltip {
+    position: fixed; pointer-events: none; z-index: 999;
+    background: #111; color: #fff; font-family: 'Courier New', monospace;
+    font-size: 0.75rem; padding: 4px 9px; border-radius: 3px;
+    display: none; white-space: nowrap; letter-spacing: 0.05em;
+  }
+
+  @keyframes flash { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+</style>
+</head>
+<body>
+
+<div id="mobileBlock">
+  <h2>Border<span>Quiz</span></h2>
+  <p>This game requires a mouse and a large screen.<br/><br/>Please open it on a desktop or laptop computer.</p>
+</div>
+
+<div id="splash" class="screen active">
+  <h1>Border<span>Quiz</span></h1>
+  <div id="loadingMsg">Loading map data�</div>
+  <button id="beginBtn" onclick="startGame()">BEGIN</button>
+</div>
+
+<div id="game" class="screen">
+  <div id="mapArea"></div>
+  <div id="sidebar">
+    <div id="stateCounter">State 1 of 48</div>
+    <div id="stateName">�</div>
+    <div id="stateBox">
+      <svg id="stateBoxSvg" viewBox="0 0 100 100"></svg>
+    </div>
+    <div id="btnRow">
+      <button id="placeBtn" onclick="confirmPlacement()">PLACE ✓</button>
+      <button id="cancelBtn" onclick="cancelPlacement()">CANCEL ✕</button>
+    </div>
+    <div id="hint">Drag the shape onto<br/>the map, then click PLACE.</div>
+  </div>
+</div>
+
+<div id="resultsPrompt" class="screen">
+  <p>All 48 states placed!</p>
+  <button id="checkScoreBtn" onclick="showResults()">CHECK YOUR SCORE</button>
+</div>
+
+<div id="results" class="screen">
+  <div id="resultsHeader">
+    <h2>YOUR RESULTS</h2>
+    <div id="scoreDisplay">�</div>
+    <div id="scoreGrade">�</div>
+    <div id="scoreLabel">average placement accuracy</div>
+  </div>
+  <div id="resultMapWrap"></div>
+  <div id="hover-tooltip"></div>
+  <button id="playAgainBtn" onclick="resetGame()">PLAY AGAIN</button>
+</div>
+
+<div id="dragGhost">
+  <svg id="dragGhostSvg" width="80" height="80"></svg>
+</div>
+
+<script src="d3.min.js"></script>
+<script src="topojson-client.min.js"></script>
+<script>
+'use strict';
+const MAP_W = 960, MAP_H = 600;
+
+const FIPS = {
+  AL:1,AZ:4,AR:5,CA:6,CO:8,CT:9,DE:10,FL:12,GA:13,
+  ID:16,IL:17,IN:18,IA:19,KS:20,KY:21,LA:22,ME:23,MD:24,
+  MA:25,MI:26,MN:27,MS:28,MO:29,MT:30,NE:31,NV:32,NH:33,
+  NJ:34,NM:35,NY:36,NC:37,ND:38,OH:39,OK:40,OR:41,PA:42,
+  RI:44,SC:45,SD:46,TN:47,TX:48,UT:49,VT:50,VA:51,WA:53,
+  WV:54,WI:55,WY:56
+};
+
+const STATE_NAMES = {
+  AL:"Alabama",AZ:"Arizona",AR:"Arkansas",CA:"California",
+  CO:"Colorado",CT:"Connecticut",DE:"Delaware",FL:"Florida",
+  GA:"Georgia",ID:"Idaho",IL:"Illinois",IN:"Indiana",
+  IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",
+  ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",
+  MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",
+  NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",
+  NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",
+  OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",
+  RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",
+  TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",
+  WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming"
+};
+
+const STATE_COLORS = [
+  "#e63946","#f4a261","#e9c46a","#2a9d8f","#264653","#e76f51","#457b9d","#a8dadc",
+  "#6d6875","#b5838d","#e5989b","#ffb4a2","#ff7b00","#ffaa00","#f72585","#7209b7",
+  "#3a0ca3","#4361ee","#4cc9f0","#80b918","#55a630","#2dc653","#007f5f","#38b000",
+  "#70e000","#9ef01a","#ccff33","#aacc00","#e07a5f","#3d405b","#81b29a","#f2cc8f",
+  "#118ab2","#06d6a0","#ffd166","#ef476f","#073b4c","#2ec4b6","#cbf3f0","#ff595e",
+  "#6a4c93","#1982c4","#8ac926","#c77dff","#ffca3a","#e63946","#48cae4","#f72585"
+];
+
+const stateData = {};
+let nationPathD = '';
+let stateIds    = [];
+let queue=[], currentIdx=0, placements={}, pendingDrop=null, isDragging=false;
+
+const projection = d3.geoAlbersUsa().scale(1070).translate([480,300]);
+const pathGen    = d3.geoPath().projection(projection);
+
+(async function loadMapData() {
+  try {
+    const us = await d3.json('states-10m.json');
+
+    const contGeoms = us.objects.states.geometries.filter(g => +g.id !== 2 && +g.id !== 15);
+    nationPathD = pathGen(topojson.merge(us, contGeoms));
+
+    const allFeatures = topojson.feature(us, us.objects.states).features;
+    Object.keys(FIPS).forEach((id, i) => {
+      const feat = allFeatures.find(f => +f.id === FIPS[id]);
+      if (!feat) return;
+      stateData[id] = {
+        id, name: STATE_NAMES[id], color: STATE_COLORS[i],
+        pathD: pathGen(feat), centroid: pathGen.centroid(feat)
+      };
+    });
+    stateIds = Object.keys(stateData);
+
+    document.getElementById('loadingMsg').style.display = 'none';
+    document.getElementById('beginBtn').style.display   = 'inline-block';
+  } catch(err) {
+    document.getElementById('loadingMsg').textContent = 'Failed to load map data. Check your internet connection.';
+    console.error(err);
+  }
+})();
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function shuffle(arr) {
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function startGame() {
+  queue=shuffle(stateIds); currentIdx=0; placements={}; pendingDrop=null;
+  buildGameMap(); showScreen('game'); loadCurrentState();
+}
+function resetGame(){ startGame(); }
+
+function buildGameMap() {
+  const mapArea = document.getElementById('mapArea');
+  mapArea.innerHTML = '';
+  const svg = makeSvg('mapSvg', MAP_W, MAP_H, 'min(78vw, 900px)');
+  addPath(svg, nationPathD, {fill:'#fff',stroke:'#111','stroke-width':'1.6','stroke-linejoin':'round'});
+  mapArea.appendChild(svg);
+  document.addEventListener('mousemove', onGlobalMouseMove);
+  document.addEventListener('mouseup',   onGlobalMouseUp);
+}
+
+function loadCurrentState() {
+  if (currentIdx >= queue.length) { showScreen('resultsPrompt'); return; }
+  const s = stateData[queue[currentIdx]];
+  document.getElementById('stateCounter').textContent = `State ${currentIdx+1} of 48`;
+  document.getElementById('stateName').textContent    = s.name;
+  document.getElementById('btnRow').style.display     = 'none';
+  document.getElementById('hint').textContent         = 'Drag the shape onto the map, then click PLACE.';
+  pendingDrop = null;
+  removePendingMarker();
+  const boxSvg = document.getElementById('stateBoxSvg');
+  boxSvg.innerHTML = '';
+  addPath(boxSvg, s.pathD, {fill:s.color, stroke:'#111','stroke-width':'1.5'});
+  // After layout settles, set viewBox at same scale as the map
+  requestAnimationFrame(() => applySidebarViewBox(s));
+}
+
+document.getElementById('stateBox').addEventListener('mousedown', e => {
+  if (currentIdx >= queue.length) return;
+  e.preventDefault();
+  isDragging = true;
+  const s = stateData[queue[currentIdx]];
+  // Ghost matches the sidebar preview exactly
+  const vb = getSidebarViewBox(s);
+  const ghostW = 354, ghostH = 222;
+  const gs = document.getElementById('dragGhostSvg');
+  gs.innerHTML='';
+  gs.setAttribute('viewBox', vb);
+  gs.setAttribute('width', ghostW);
+  gs.setAttribute('height', ghostH);
+  addPath(gs, s.pathD, {fill:s.color,stroke:'#222','stroke-width':'1.5'});
+  const ghost = document.getElementById('dragGhost');
+  ghost.style.display='block';
+  ghost.style.width=ghostW+'px'; ghost.style.height=ghostH+'px';
+  posGhost(ghost, e.clientX, e.clientY, ghostW, ghostH);
+});
+
+function onGlobalMouseMove(e) {
+  if (!isDragging) return;
+  const g = document.getElementById('dragGhost');
+  posGhost(g, e.clientX, e.clientY, g.offsetWidth, g.offsetHeight);
+}
+function onGlobalMouseUp(e) {
+  if (!isDragging) return;
+  isDragging = false;
+  document.getElementById('dragGhost').style.display = 'none';
+  const mapSvg = document.getElementById('mapSvg');
+  if (!mapSvg) return;
+  const r = mapSvg.getBoundingClientRect();
+  if (e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom) {
+    const svgX = ((e.clientX-r.left)/r.width)*MAP_W;
+    const svgY = ((e.clientY-r.top)/r.height)*MAP_H;
+    pendingDrop = {x:svgX,y:svgY};
+    showPendingMarker(svgX,svgY);
+    document.getElementById('btnRow').style.display = 'flex';
+    document.getElementById('hint').textContent = 'Happy? Click PLACE to confirm, or CANCEL to re-drag.';
+  }
+}
+function posGhost(el,cx,cy,w,h){ el.style.left=(cx-(w||40)/2)+'px'; el.style.top=(cy-(h||40)/2)+'px'; }
+
+// Returns a viewBox string centered on the state at the same scale as the rendered map
+function getSidebarViewBox(s) {
+  const mapSvg = document.getElementById('mapSvg');
+  if (!mapSvg) return '0 0 960 600';
+  const mapRect = mapSvg.getBoundingClientRect();
+  if (!mapRect.width) return '0 0 960 600';
+  const mapScale = mapRect.width / MAP_W; // rendered px per SVG unit
+  const boxEl = document.getElementById('stateBox');
+  const vbW = boxEl.clientWidth  / mapScale;
+  const vbH = boxEl.clientHeight / mapScale;
+  const [cx, cy] = s.centroid;
+  return `${cx - vbW/2} ${cy - vbH/2} ${vbW} ${vbH}`;
+}
+
+function applySidebarViewBox(s) {
+  const vb = getSidebarViewBox(s);
+  const boxSvg = document.getElementById('stateBoxSvg');
+  if (!boxSvg) return;
+  const boxEl = document.getElementById('stateBox');
+  boxSvg.setAttribute('width',  boxEl.clientWidth);
+  boxSvg.setAttribute('height', boxEl.clientHeight);
+  boxSvg.setAttribute('viewBox', vb);
+}
+
+function showPendingMarker(svgX,svgY) {
+  removePendingMarker();
+  const mapSvg = document.getElementById('mapSvg');
+  const s = stateData[queue[currentIdx]];
+  const [cx,cy] = s.centroid;
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('id','pending-marker');
+  g.setAttribute('transform',`translate(${svgX-cx},${svgY-cy})`);
+  addPath(g, s.pathD, {fill:s.color,stroke:'#333','stroke-width':'0.9',opacity:'0.55'});
+  addPath(g, s.pathD, {fill:'none',stroke:'#22c55e','stroke-width':'2','stroke-dasharray':'5,3'});
+  mapSvg.appendChild(g);
+}
+function removePendingMarker(){ const m=document.getElementById('pending-marker'); if(m)m.remove(); }
+
+function confirmPlacement() {
+  if (!pendingDrop) return;
+  const s = stateData[queue[currentIdx]];
+  const [cx,cy] = s.centroid;
+  placements[s.id] = {dropX:pendingDrop.x,dropY:pendingDrop.y,tx:pendingDrop.x-cx,ty:pendingDrop.y-cy};
+  removePendingMarker();
+  document.getElementById('btnRow').style.display = 'none';
+  document.getElementById('hint').textContent = 'Drag the shape onto the map, then click PLACE.';
+  pendingDrop=null; currentIdx++; loadCurrentState();
+}
+
+function cancelPlacement() {
+  pendingDrop = null;
+  removePendingMarker();
+  document.getElementById('btnRow').style.display = 'none';
+  document.getElementById('hint').textContent = 'Drag the shape onto the map, then click PLACE.';
+}
+
+function showResults() { buildResultMap(); calcScore(); showScreen('results'); animatePlacements(); }
+
+function buildResultMap() {
+  const wrap = document.getElementById('resultMapWrap');
+  wrap.innerHTML = '';
+  const svg = makeSvg('resultSvg',MAP_W,MAP_H,'min(92vw,900px)');
+  stateIds.forEach(id => addPath(svg,stateData[id].pathD,{fill:'#f5f5f5',stroke:'#ccc','stroke-width':'0.4'}));
+  addPath(svg,nationPathD,{fill:'none',stroke:'#111','stroke-width':'1.4','stroke-linejoin':'round'});
+
+  // Hover overlay group — sits on top of everything
+  const hoverG = document.createElementNS('http://www.w3.org/2000/svg','g');
+  hoverG.setAttribute('id','hover-overlay');
+  hoverG.style.pointerEvents = 'none';
+
+  stateIds.forEach(id => {
+    const p=placements[id]; if(!p) return;
+    const s=stateData[id];
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('id','result-'+id);
+    g.setAttribute('transform',`translate(${p.tx},${p.ty})`);
+    g.style.opacity='0'; g.style.transition='opacity 0.15s ease';
+    g.style.cursor='pointer';
+    addPath(g,s.pathD,{fill:s.color,stroke:'#111','stroke-width':'2.2',opacity:'0.45'});
+
+    g.addEventListener('mouseenter', e => showCorrectOutline(id, e));
+    g.addEventListener('mousemove',  e => moveTooltip(e));
+    g.addEventListener('mouseleave', () => hideCorrectOutline());
+
+    svg.appendChild(g);
+  });
+
+  svg.appendChild(hoverG);
+  wrap.appendChild(svg);
+}
+
+function showCorrectOutline(id, e) {
+  const s = stateData[id];
+  const p = placements[id];
+  const hoverG = document.getElementById('hover-overlay');
+  hoverG.innerHTML = '';
+
+  // Dashed line from placed centroid to correct centroid
+  const [cx,cy] = s.centroid;
+  const placedCx = cx + p.tx;
+  const placedCy = cy + p.ty;
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1', placedCx); line.setAttribute('y1', placedCy);
+  line.setAttribute('x2', cx);       line.setAttribute('y2', cy);
+  line.setAttribute('stroke','#e63946'); line.setAttribute('stroke-width','1.5');
+  line.setAttribute('stroke-dasharray','5,3'); line.setAttribute('opacity','0.8');
+  hoverG.appendChild(line);
+
+  // Correct position outline — bright green dashed, no fill
+  addPath(hoverG, s.pathD, {
+    fill: 'none', stroke: '#22c55e',
+    'stroke-width': '2.5', 'stroke-dasharray': '6,3'
+  });
+
+  // Tooltip
+  const dist = Math.round(Math.hypot(p.dropX - cx, p.dropY - cy));
+  const miles = Math.round(dist * 4.8); // rough SVG-unit to miles
+  const tip = document.getElementById('hover-tooltip');
+  tip.textContent = `${s.name} — ${miles > 0 ? miles + ' mi off' : 'Perfect!'}`;
+  tip.style.display = 'block';
+  moveTooltip(e);
+}
+
+function moveTooltip(e) {
+  const tip = document.getElementById('hover-tooltip');
+  tip.style.left = (e.clientX + 14) + 'px';
+  tip.style.top  = (e.clientY - 28) + 'px';
+}
+
+function hideCorrectOutline() {
+  const hoverG = document.getElementById('hover-overlay');
+  if (hoverG) hoverG.innerHTML = '';
+  document.getElementById('hover-tooltip').style.display = 'none';
+}
+
+function calcScore() {
+  let total=0,count=0;
+  stateIds.forEach(id => {
+    const p=placements[id]; if(!p) return;
+    const [cx,cy]=stateData[id].centroid;
+    const dist=Math.hypot(p.dropX-cx,p.dropY-cy);
+    total+=Math.max(0,100-dist/3); count++;
+  });
+  const score=count?Math.round(total/count):0;
+  const grade=score>=93?'A+':score>=90?'A':score>=87?'A-':score>=83?'B+':score>=80?'B':score>=77?'B-':score>=73?'C+':score>=70?'C':score>=67?'C-':score>=60?'D':'F';
+  document.getElementById('scoreDisplay').textContent=score+'%';
+  document.getElementById('scoreGrade').textContent='Grade: '+grade;
+}
+
+function animatePlacements() {
+  shuffle(stateIds).filter(id=>placements[id]).forEach((id,i)=>{
+    setTimeout(()=>{ const el=document.getElementById('result-'+id); if(el)el.style.opacity='1'; },i*55);
+  });
+}
+
+function makeSvg(id,w,h,cssW) {
+  const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('id',id); s.setAttribute('viewBox',`0 0 ${w} ${h}`);
+  s.style.display='block'; s.style.width=cssW; s.style.height='auto';
+  return s;
+}
+function addPath(parent,d,attrs) {
+  const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('d',d);
+  Object.entries(attrs).forEach(([k,v])=>p.setAttribute(k,v));
+  parent.appendChild(p); return p;
+}
+function fitViewBox(svgEl,pathD,pad=6) {
+  const tmp=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  tmp.style.cssText='position:absolute;visibility:hidden;pointer-events:none;width:0;height:0';
+  document.body.appendChild(tmp);
+  const tp=document.createElementNS('http://www.w3.org/2000/svg','path');
+  tp.setAttribute('d',pathD); tmp.appendChild(tp);
+  const b=tp.getBBox(); document.body.removeChild(tmp);
+  svgEl.setAttribute('viewBox',`${b.x-pad} ${b.y-pad} ${b.width+pad*2} ${b.height+pad*2}`);
+}
+</script>
+<script>
+  // Block mobile/touch devices
+  (function() {
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent)
+      || ('ontouchstart' in window)
+      || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+    if (isMobile) {
+      document.getElementById('mobileBlock').style.display = 'flex';
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    }
+  })();
+</script>
+</body>
+</html>
