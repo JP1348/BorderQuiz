@@ -112,6 +112,31 @@
     display: none; white-space: nowrap; letter-spacing: 0.05em;
   }
 
+  /* NAME MODAL */
+  #nameModal {
+    display: none; position: fixed; inset: 0; z-index: 10000;
+    background: rgba(0,0,0,0.52); align-items: center; justify-content: center;
+  }
+  #nameModal.open { display: flex; }
+  #nameModalBox {
+    background: #fff; border: 2px solid #111; padding: 2.2rem 2.5rem;
+    text-align: center; display: flex; flex-direction: column; gap: 1.2rem;
+    min-width: 320px;
+  }
+  #nameModalBox p { font-size: 1rem; color: #111; line-height: 1.6; letter-spacing: 0.03em; }
+  #playerNameInput {
+    font-family: 'Courier New', monospace; font-size: 1rem;
+    border: 2px solid #111; padding: 0.5rem 0.8rem;
+    text-align: center; letter-spacing: 0.05em; outline: none; width: 100%;
+  }
+  #playerNameInput:focus { border-color: #22c55e; }
+  #nameSubmitBtn {
+    font-family: 'Courier New', monospace; font-size: 1rem; font-weight: bold;
+    color: #fff; background: #22c55e; border: none; padding: 0.7rem 1.5rem;
+    cursor: pointer; letter-spacing: 0.1em;
+  }
+  #nameSubmitBtn:hover { background: #16a34a; }
+
   @keyframes flash { 0%,49%{opacity:1} 50%,100%{opacity:0} }
 </style>
 </head>
@@ -146,7 +171,7 @@
 
 <div id="resultsPrompt" class="screen">
   <p>All 48 states placed!</p>
-  <button id="checkScoreBtn" onclick="showResults()">CHECK YOUR SCORE</button>
+  <button id="checkScoreBtn" onclick="promptName()">CHECK YOUR SCORE</button>
 </div>
 
 <div id="results" class="screen">
@@ -161,6 +186,15 @@
   <button id="playAgainBtn" onclick="resetGame()">PLAY AGAIN</button>
 </div>
 
+<div id="nameModal">
+  <div id="nameModalBox">
+    <p>All 48 states placed!<br/>Enter your name to save your score.</p>
+    <input type="text" id="playerNameInput" placeholder="Your name (optional)" maxlength="30" autocomplete="off"
+      onkeydown="if(event.key==='Enter')submitName()" />
+    <button id="nameSubmitBtn" onclick="submitName()">SEE MY SCORE →</button>
+  </div>
+</div>
+
 <div id="dragGhost">
   <svg id="dragGhostSvg" width="80" height="80"></svg>
 </div>
@@ -170,6 +204,31 @@
 <script>
 'use strict';
 const MAP_W = 960, MAP_H = 600;
+
+const SUPA_URL = 'https://wclrjkdetnmudahygwem.supabase.co';
+const SUPA_KEY = 'sb_publishable_EONXJpbkHK0mpMW46Cfk-g_DMhQjpmF';
+function supaPost(table, data) {
+  fetch(`${SUPA_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(data)
+  }).catch(() => {});
+}
+function promptName() {
+  document.getElementById('playerNameInput').value = '';
+  document.getElementById('nameModal').classList.add('open');
+  setTimeout(() => document.getElementById('playerNameInput').focus(), 50);
+}
+function submitName() {
+  const name = document.getElementById('playerNameInput').value.trim();
+  document.getElementById('nameModal').classList.remove('open');
+  showResults(name);
+}
 
 const FIPS = {
   AL:1,AZ:4,AR:5,CA:6,CO:8,CT:9,DE:10,FL:12,GA:13,
@@ -251,6 +310,7 @@ function shuffle(arr) {
 function startGame() {
   queue=shuffle(stateIds); currentIdx=0; placements={}; pendingDrop=null;
   buildGameMap(); showScreen('game'); loadCurrentState();
+  supaPost('borderquiz_plays', {});
 }
 function resetGame(){ startGame(); }
 
@@ -379,7 +439,7 @@ function cancelPlacement() {
   document.getElementById('hint').textContent = 'Drag the shape onto the map, then click PLACE.';
 }
 
-function showResults() { buildResultMap(); calcScore(); showScreen('results'); animatePlacements(); }
+function showResults(playerName) { buildResultMap(); calcScore(playerName); showScreen('results'); animatePlacements(); }
 
 function buildResultMap() {
   const wrap = document.getElementById('resultMapWrap');
@@ -458,7 +518,7 @@ function hideCorrectOutline() {
   document.getElementById('hover-tooltip').style.display = 'none';
 }
 
-function calcScore() {
+function calcScore(playerName) {
   let total=0,count=0;
   stateIds.forEach(id => {
     const p=placements[id]; if(!p) return;
@@ -470,6 +530,7 @@ function calcScore() {
   const grade=score>=93?'A+':score>=90?'A':score>=87?'A-':score>=83?'B+':score>=80?'B':score>=77?'B-':score>=73?'C+':score>=70?'C':score>=67?'C-':score>=60?'D':'F';
   document.getElementById('scoreDisplay').textContent=score+'%';
   document.getElementById('scoreGrade').textContent='Grade: '+grade;
+  supaPost('borderquiz_scores', { player_name: playerName || null, score, grade });
 }
 
 function animatePlacements() {
