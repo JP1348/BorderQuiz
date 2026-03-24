@@ -129,6 +129,7 @@
   }
   #saveScoreBtn:hover { background: #16a34a; }
   #saveScoreBtn:disabled { background: #aaa; cursor: default; }
+  #saveScoreLabel { font-size: 0.78rem; color: #999; letter-spacing: 0.04em; margin-top: 0.6rem; }
   #saveFeedback { font-size: 0.78rem; color: #22c55e; letter-spacing: 0.04em; margin-top: 0.2rem; min-height: 1.1em; }
 
   @keyframes flash { 0%,49%{opacity:1} 50%,100%{opacity:0} }
@@ -174,10 +175,11 @@
     <div id="scoreDisplay">�</div>
     <div id="scoreGrade">�</div>
     <div id="scoreLabel">average placement accuracy</div>
+    <div id="saveScoreLabel">Want to add your name to the leaderboard?</div>
     <div id="saveScoreRow">
       <input type="text" id="saveNameInput" placeholder="Your name" maxlength="30" autocomplete="off"
         onkeydown="if(event.key==='Enter')saveScore()" />
-      <button id="saveScoreBtn" onclick="saveScore()">SAVE SCORE</button>
+      <button id="saveScoreBtn" onclick="saveScore()">ADD TO LEADERBOARD</button>
     </div>
     <div id="saveFeedback"></div>
   </div>
